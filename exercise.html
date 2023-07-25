@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header w/ arrow -->
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between ps-3 pe-3">
+            <div class="mt-3">
+                <a href="index.html"><i class="bi bi-arrow-left fs-3 text-dark"></i></a>
+            </div>
+            <div class="p-2 mt-1">
+                <h1 class="fw-bold">FITNESS APP</h1>
+            </div>
+            <div class="mt-3">
+                <i class="bi bi-info-circle fs-4"></i>
+            </div>
+        </div>
+    </div>
+    <!-- Name of exercise w/ timer -->
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between">
+            <h1 class="fw-bold" id="nameOfExercise">Squat</h1>
+            <button onclick="init()" class="btn btn-primary fs-4 " id="startButton">Start</button>
+            <button class="btn btn-primary " id="doneButton" disabled style="display: none;">
+                Done
+                <i class="bi bi-check-lg"></i>
+            </button>
+            <button class="btn btn-primary" type="button" id="loadingButton" disabled style="display: none;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span id="loadingText">Loading...</span>
+            </button>
+            <h1 class="fw-bold" id="time">00:00</h1>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="container d-flex justify-content-center">
+        <canvas id="canvas" class="mt-3"
+            style="position:relative; width: 100%; background-color: grey; border-radius: 10px;">
+        </canvas>
+    </div>
+
+    <!-- Slider w/ probability -->
+    <div class="container d-flex justify-content-center mt-3">
+        <div style="width: 20rem;">
+            <div class="progress">
+                <div class="progress-bar bg-info" id="up"></div>
+            </div>
+            <div class="progress">
+                <div class="progress-bar bg-warning" id="down"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Counter -->
+    <div class="container d-flex justify-content-center">
+        <p id="counter" class="fw-bold" style="font-size: 4rem;">
+            0
+        </p>
+    </div>
+
+    <!-- Errors -->
+    <div class="container d-flex justify-content-center fs-3"">
+        <span id="errorText" style="display: none;">Error: </span>
+    </div>
+
+    <!-- Pose recognition -->
+    <script>
+        let URL;
+        // get the name of the exercise from the url
+        let urlParams = new URLSearchParams(window.location.search);
+        let exercise = urlParams.get('exercise');
+        // update the name of the exercise
+        document.getElementById("nameOfExercise").innerHTML = exercise;
+        console.log(exercise);
+
+        // get the url of the model
+        if (exercise == 'Deadlift'){
+            URL = "https://teachablemachine.withgoogle.com/models/qI971WaIA/";
+        } else if (exercise == 'Squat') {
+            URL = "https://teachablemachine.withgoogle.com/models/-Hk2XqODI/";
+        } else if (exercise == 'OHP'){
+            URL = "https://teachablemachine.withgoogle.com/models/zYMX_TMby/";
+        } else {
+            console.log("Error: Exercise not found!");
+        }
+
+        let model, webcam, ctx, maxPredictions;
+        let up = document.getElementById("up");
+        let down = document.getElementById("down");
+        let counter = 0;
+        let tick = false;
+        let counterElement = document.getElementById("counter");
+        let startButton = document.getElementById("startButton");
+        let loadingButton = document.getElementById("loadingButton");
+        let loadingText = document.getElementById("loadingText");
+        let doneButton = document.getElementById("doneButton");
+        let errorText = document.getElementById("errorText");
+
+        async function init() {
+
+            // hide the start button and show the loading button
+            startButton.style.display = "none";
+            loadingButton.style.display = "block";
+
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // load the model and metadata
+            // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+            // Note: the pose library adds a tmPose object to your window (window.tmPose)
+            loadingText.innerHTML = "Loading model...";
+            model = await tmPose.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // Convenience function to setup a webcam
+            const size = 400;
+            const flip = true; // whether to flip the webcam
+            loadingText.innerHTML = "Loading webcam...";
+            webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
+            await webcam.setup(); // request access to the webcam
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // append/get elements to the DOM
+            loadingText.innerHTML = "Loading canvas...";
+            const canvas = document.getElementById("canvas");
+            canvas.width = size; canvas.height = size;
+            ctx = canvas.getContext("2d");
+
+            // call updateTime every second
+            setInterval(updateTime, 1000);
+
+            // show the done button and hide the loading button
+            doneButton.style.display = "block";
+            loadingButton.style.display = "none";
+            hideDoneButton();
+        }
+
+        async function loop(timestamp) {
+            webcam.update(); // update the webcam frame
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            // Prediction #1: run input through posenet
+            // estimatePose can take in an image, video or canvas html element
+            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+            if (!pose || pose.score < 0.82) {
+                console.log("Pose not detected");
+                errorText.style.display = "block";
+                errorText.innerHTML = "Error: Pose not detected!";
+                if (webcam.canvas) {
+                    ctx.drawImage(webcam.canvas, 0, 0);
+                }
+                return;
+            }else{
+                errorText.style.display = "none";
+            }
+
+            // Prediction 2: run input through teachable machine classification model
+            const prediction = await model.predict(posenetOutput);
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+
+                // probability of up and down
+                let down_prob = prediction[0].probability.toFixed(2);
+                let up_prob = prediction[1].probability.toFixed(2);
+
+                // set the progress bar
+                up.style.width = up_prob * 100 + "%";
+                down.style.width = down_prob * 100 + "%";
+                up.innerHTML = "UP: " + up_prob * 100 + "%";
+                down.innerHTML = "DOWN: " + down_prob * 100 + "%";
+
+                if (up_prob == 0 && down_prob == 1) {
+                    if (tick == false) {
+                        counter++;
+                        counterElement.innerHTML = counter;
+                        tick = true;
+                    }
+                } else if (up_prob == 1 && down_prob == 0) {
+                    tick = false;
+                }
+
+            }
+
+            // finally draw the poses
+            drawPose(pose);
+        }
+
+        function updateTime() {
+            let time = document.getElementById("time");
+            let timeText = time.innerHTML;
+            let timeArray = timeText.split(":");
+            let min = parseInt(timeArray[0]);
+            let sec = parseInt(timeArray[1]);
+            sec++;
+            if (sec == 60) {
+                min++;
+                sec = 0;
+            }
+            if (sec < 10) {
+                sec = "0" + sec;
+            }
+            if (min < 10) {
+                min = "0" + min;
+            }
+            time.innerHTML = min + ":" + sec;
+        }
+
+        function hideDoneButton(){
+            setTimeout(function(){
+                doneButton.style.display = "none";
+            }, 2000);
+        }
+
+        function drawPose(pose) {
+            if (webcam.canvas) {
+                ctx.drawImage(webcam.canvas, 0, 0);
+                // draw the keypoints and skeleton
+                if (pose) {
+                    const minPartConfidence = 0.5;
+                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+                }
+            }
+        }
+
+    </script>
+
+
+</body>
+
+</html>
