@@ -30,29 +30,38 @@
             </div>
         </div>
     </div>
-    <!-- Name of exercise w/ timer -->
-    <div class="container mt-3">
-        <div class="d-flex justify-content-between">
-            <h1 class="fw-bold" id="nameOfExercise">Squat</h1>
-            <button onclick="init()" class="btn btn-primary fs-4 " id="startButton">Start</button>
-            <button class="btn btn-primary " id="doneButton" disabled style="display: none;">
-                Done
-                <i class="bi bi-check-lg"></i>
-            </button>
-            <button class="btn btn-primary" type="button" id="loadingButton" disabled style="display: none;">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                <span id="loadingText">Loading...</span>
-            </button>
-            <h1 class="fw-bold" id="time">00:00</h1>
+
+    <div class="row">
+        <div class="col-xxl-4 col-xl-4 col-lg-3 col-md-3"></div>
+        <div class="col-xxl-4 col-xl-4 col-lg-6 col-md-6">
+            <!-- Name of exercise w/ timer -->
+            <div class="container mt-3">
+                <div class="d-flex justify-content-between">
+                    <h1 class="fw-bold" id="nameOfExercise">Squat</h1>
+                    <button onclick="init()" class="btn btn-primary fs-4 " id="startButton">Start</button>
+                    <button class="btn btn-primary " id="doneButton" disabled style="display: none;">
+                        Done
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button class="btn btn-primary" type="button" id="loadingButton" disabled style="display: none;">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span id="loadingText">Loading...</span>
+                    </button>
+                    <h1 class="fw-bold" id="time">00:00</h1>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+
+            <div class="container d-flex justify-content-center">
+                <canvas id="canvas" class="mt-3"
+                    style="position:relative; width: 100%; background-color: grey; border-radius: 10px;">
+                </canvas>
+            </div>
         </div>
+        <div class="col-xxl-4 col-xl-4 col-lg-3 col-md-3"></div>
     </div>
 
-    <!-- Canvas -->
-    <div class="container d-flex justify-content-center">
-        <canvas id="canvas" class="mt-3"
-            style="position:relative; width: 100%; background-color: grey; border-radius: 10px;">
-        </canvas>
-    </div>
 
     <!-- Slider w/ probability -->
     <div class="container d-flex justify-content-center mt-3">
@@ -89,11 +98,11 @@
         console.log(exercise);
 
         // get the url of the model
-        if (exercise == 'Deadlift'){
+        if (exercise == 'Deadlift') {
             URL = "https://teachablemachine.withgoogle.com/models/qI971WaIA/";
         } else if (exercise == 'Squat') {
             URL = "https://teachablemachine.withgoogle.com/models/-Hk2XqODI/";
-        } else if (exercise == 'OHP'){
+        } else if (exercise == 'OHP') {
             URL = "https://teachablemachine.withgoogle.com/models/zYMX_TMby/";
         } else {
             console.log("Error: Exercise not found!");
@@ -169,7 +178,7 @@
                     ctx.drawImage(webcam.canvas, 0, 0);
                 }
                 return;
-            }else{
+            } else {
                 errorText.style.display = "none";
             }
 
@@ -226,8 +235,8 @@
             time.innerHTML = min + ":" + sec;
         }
 
-        function hideDoneButton(){
-            setTimeout(function(){
+        function hideDoneButton() {
+            setTimeout(function () {
                 doneButton.style.display = "none";
             }, 2000);
         }
