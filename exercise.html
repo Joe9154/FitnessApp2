@@ -4,17 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-        crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="movenet.js"></script>
+
+    <script>
+        function print(...args) {
+            console.log(...args);
+        }
+    </script>
 </head>
 
 <body>
+
+    <!-- Countdown overlay -->
+    <div style="  
+    position: fixed; 
+    width: 100%; 
+    height: 100%; 
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.8); 
+    z-index: 2;
+    display: none;
+    " id="overlay">
+        <div id="countdown"
+            style="position:absolute; top:20%; left:44%; color:white; font-weight: bold; font-size: 4rem; text-shadow: 0 0 6px #000000, 0 0 5px #000000;">
+            0</div>
+    </div>
 
     <!-- Header w/ arrow -->
     <div class="container-fluid">
@@ -38,7 +59,7 @@
             <div class="container mt-3">
                 <div class="d-flex justify-content-between">
                     <h1 class="fw-bold" id="nameOfExercise">Squat</h1>
-                    <button onclick="init()" class="btn btn-primary fs-4 " id="startButton">Start</button>
+                    <button onclick="start()" class="btn btn-primary fs-4 " id="startButton">Start</button>
                     <button class="btn btn-primary " id="doneButton" disabled style="display: none;">
                         Done
                         <i class="bi bi-check-lg"></i>
@@ -54,10 +75,12 @@
             <!-- Canvas -->
 
             <div class="container d-flex justify-content-center">
-                <canvas id="canvas" class="mt-3"
-                    style="position:relative; width: 100%; background-color: grey; border-radius: 10px;">
-                </canvas>
+                <video id="testVideo2" muted style="display: none;"></video>
+                <canvas id="testCanvas2" class="mt-3"
+                    style="position:relative; width: 100%; background-color: grey; border-radius: 10px;"></canvas>
             </div>
+
+
         </div>
         <div class="col-xxl-4 col-xl-4 col-lg-3 col-md-3"></div>
     </div>
@@ -66,12 +89,9 @@
     <!-- Slider w/ probability -->
     <div class="container d-flex justify-content-center mt-3">
         <div style="width: 20rem;">
-            <div class="progress">
-                <div class="progress-bar bg-info" id="up"></div>
-            </div>
-            <div class="progress">
-                <div class="progress-bar bg-warning" id="down"></div>
-            </div>
+            <div id="up" style="background-color: aquamarine; height: 1.5rem; border: 2px solid black;"></div>
+            <div id="down"
+                style="background-color: blueviolet; height: 1.5rem; margin-top:5px; border: 2px solid black;"></div>
         </div>
     </div>
 
@@ -84,7 +104,7 @@
 
     <!-- Errors -->
     <div class="container d-flex justify-content-center fs-3"">
-        <span id="errorText" style="display: none;">Error: </span>
+        <span id=" errorText" style="display: none;">Error: </span>
     </div>
 
     <!-- Pose recognition -->
@@ -98,20 +118,23 @@
         console.log(exercise);
 
         // get the url of the model
-        if (exercise == 'Deadlift') {
-            URL = "https://teachablemachine.withgoogle.com/models/qI971WaIA/";
-        } else if (exercise == 'Squat') {
-            URL = "https://teachablemachine.withgoogle.com/models/-Hk2XqODI/";
-        } else if (exercise == 'OHP') {
-            URL = "https://teachablemachine.withgoogle.com/models/zYMX_TMby/";
-        } else {
-            console.log("Error: Exercise not found!");
-        }
+        // if (exercise == 'Deadlift') {
+        //     URL = "https://teachablemachine.withgoogle.com/models/qI971WaIA/";
+        // } else if (exercise == 'Squat') {
+        //     URL = "https://teachablemachine.withgoogle.com/models/-Hk2XqODI/";
+        // } else if (exercise == 'OHP') {
+        //     URL = "https://teachablemachine.withgoogle.com/models/zYMX_TMby/";
+        // } else {
+        //     console.log("Error: Exercise not found!");
+        // }
 
-        let model, webcam, ctx, maxPredictions;
+        let model;
+        let video;
+        let canvasVideo2 = document.getElementById("testCanvas2");
+        let ctx = canvasVideo2.getContext("2d");
         let up = document.getElementById("up");
         let down = document.getElementById("down");
-        let counter = 0;
+        let counter = -1;
         let tick = false;
         let counterElement = document.getElementById("counter");
         let startButton = document.getElementById("startButton");
@@ -119,100 +142,100 @@
         let loadingText = document.getElementById("loadingText");
         let doneButton = document.getElementById("doneButton");
         let errorText = document.getElementById("errorText");
+        let overlay = document.getElementById("overlay");
+        let countdown = document.getElementById("countdown");
 
-        async function init() {
+        let movenet = new MoveNet();
 
-            // hide the start button and show the loading button
+
+        async function start() {
             startButton.style.display = "none";
             loadingButton.style.display = "block";
-
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            // load the model and metadata
-            // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-            // Note: the pose library adds a tmPose object to your window (window.tmPose)
-            loadingText.innerHTML = "Loading model...";
-            model = await tmPose.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            // Convenience function to setup a webcam
-            const size = 400;
-            const flip = true; // whether to flip the webcam
-            loadingText.innerHTML = "Loading webcam...";
-            webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
-            await webcam.setup(); // request access to the webcam
-            await webcam.play();
-            window.requestAnimationFrame(loop);
-
-            // append/get elements to the DOM
-            loadingText.innerHTML = "Loading canvas...";
-            const canvas = document.getElementById("canvas");
-            canvas.width = size; canvas.height = size;
-            ctx = canvas.getContext("2d");
-
-            // call updateTime every second
-            setInterval(updateTime, 1000);
-
-            // show the done button and hide the loading button
-            doneButton.style.display = "block";
+            await loadModel();
+            await setupWebcam();
+            setupCanvas();
             loadingButton.style.display = "none";
+            doneButton.style.display = "block";
             hideDoneButton();
+            startCountdown();
+            drawFrames();
         }
 
-        async function loop(timestamp) {
-            webcam.update(); // update the webcam frame
-            await predict();
-            window.requestAnimationFrame(loop);
+        function startCountdown() {
+            overlay.style.display = "block";
+            let time = 5;
+            countdown.innerHTML = time;
+            let countdownInterval = setInterval(function () {
+                time--;
+                countdown.innerHTML = time;
+                if (time == 0) {
+                    clearInterval(countdownInterval);
+                    countdown.style.display = "none";
+                    overlay.style.display = "none";
+                    setInterval(updateTime, 1000);
+                }
+            }, 1000);
         }
 
-        async function predict() {
-            // Prediction #1: run input through posenet
-            // estimatePose can take in an image, video or canvas html element
-            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-            if (!pose || pose.score < 0.82) {
-                console.log("Pose not detected");
-                errorText.style.display = "block";
-                errorText.innerHTML = "Error: Pose not detected!";
-                if (webcam.canvas) {
-                    ctx.drawImage(webcam.canvas, 0, 0);
+        async function setupWebcam() {
+            video = document.getElementById("testVideo2");
+            await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: "user",
+                    width: 400,
+                    height: 400
                 }
-                return;
-            } else {
-                errorText.style.display = "none";
+            })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.onloadedmetadata = function () {
+                        video.play();
+                    };
+                })
+                .catch(function (err) {
+                    console.log("An error occurred! " + err);
+                });
+            print("Webcam setup done");
+        }
+
+
+        async function loadModel() {
+            const modelName = `${exercise.toLowerCase()}-nn-model.json`;
+            model = await tf.loadLayersModel(`http://127.0.0.1:5500/exerciseModels/${modelName}`)
+            print("Model loaded")
+        }
+
+        function setupCanvas() {
+            canvasVideo2.width = 400;
+            canvasVideo2.height = 400;
+        }
+
+        function drawFrames() {
+            ctx.drawImage(video, 0, 0, canvasVideo2.width, canvasVideo2.height);
+            let keypoints = movenet.getKeypoints(canvasVideo2).flat();
+            movenet.drawKeypoints(canvasVideo2, ctx, keypoints);
+            makePredictionNN(keypoints)
+
+            requestAnimationFrame(drawFrames);
+        }
+
+        function drawKeypoints(canvas, ctx, keypoints) {
+            for (let i = 0; i < keypoints.length; i += 3) {
+                const y = keypoints[i] * canvas.width
+                const x = keypoints[i + 1] * canvas.height
+                const score = keypoints[i + 2]
+                ctx.beginPath()
+                ctx.arc(x, y, 5, 0, 2 * Math.PI)
+                ctx.fill()
             }
+        }
 
-            // Prediction 2: run input through teachable machine classification model
-            const prediction = await model.predict(posenetOutput);
-
-            for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction =
-                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-
-                // probability of up and down
-                let down_prob = prediction[0].probability.toFixed(2);
-                let up_prob = prediction[1].probability.toFixed(2);
-
-                // set the progress bar
-                up.style.width = up_prob * 100 + "%";
-                down.style.width = down_prob * 100 + "%";
-                up.innerHTML = "UP: " + up_prob * 100 + "%";
-                down.innerHTML = "DOWN: " + down_prob * 100 + "%";
-
-                if (up_prob == 0 && down_prob == 1) {
-                    if (tick == false) {
-                        counter++;
-                        counterElement.innerHTML = counter;
-                        tick = true;
-                    }
-                } else if (up_prob == 1 && down_prob == 0) {
-                    tick = false;
-                }
-
-            }
-
-            // finally draw the poses
-            drawPose(pose);
+        async function makePredictionNN(keypoints) {
+            const tensor = tf.tensor(keypoints)
+            const prediction = model.predict(tensor.reshape([1, 51]))
+            prediction.print()
+            updateProgressBar2(prediction)
         }
 
         function updateTime() {
@@ -241,17 +264,21 @@
             }, 2000);
         }
 
-        function drawPose(pose) {
-            if (webcam.canvas) {
-                ctx.drawImage(webcam.canvas, 0, 0);
-                // draw the keypoints and skeleton
-                if (pose) {
-                    const minPartConfidence = 0.5;
-                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-                }
+        function updateProgressBar2(prediction) {
+            let upProb = prediction.dataSync()[0];
+            let downProb = prediction.dataSync()[1];
+            up.style.width = upProb * 100 + "%";
+            down.style.width = downProb * 100 + "%";
+            if (upProb > 0.9 && tick == false) {
+                counter++;
+                counterElement.innerHTML = counter;
+                tick = true;
+            }
+            if (upProb < 0.2) {
+                tick = false;
             }
         }
+
 
     </script>
 
