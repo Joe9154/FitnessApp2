@@ -2,6 +2,8 @@
 
 A mobile fitness app that counts the number of repetitions of fitness exercises using computer vision & machine learning.
 
+[Demo](https://joe9154.github.io/FitnessApp2/)
+
 [pic]
 
 ## How does it work?
