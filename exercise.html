@@ -202,7 +202,9 @@
 
         async function loadModel() {
             const modelName = `${exercise.toLowerCase()}-nn-model.json`;
-            model = await tf.loadLayersModel(`./exerciseModels/${modelName}`)
+            const currentURL = window.location.href;
+            const modelURL = currentURL.substring( 0, currentURL.lastIndexOf( "/" ) + 1);
+            model = await tf.loadLayersModel(`/exerciseModels/${modelName}`);
             print("Model loaded")
         }
 
