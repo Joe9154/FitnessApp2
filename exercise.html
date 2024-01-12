@@ -204,7 +204,7 @@
             const modelName = `${exercise.toLowerCase()}-nn-model.json`;
             const currentURL = window.location.href;
             const modelURL = currentURL.substring( 0, currentURL.lastIndexOf( "/" ) + 1);
-            model = await tf.loadLayersModel(`/exerciseModels/${modelName}`);
+            model = await tf.loadLayersModel(`${modelURL}/exerciseModels/${modelName}`);
             print("Model loaded")
         }
 
