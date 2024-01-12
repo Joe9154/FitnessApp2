@@ -1,8 +1,6 @@
 # Mobile Fitness App
 
-A simple mobile fitness app that counts the number of repetitions of fitness exercises using computer vision & machine learning. 
-
-[Demo](https://joe9154.github.io/Mobile-Fitness-App/)
+A simple mobile fitness app that counts the number of repetitions of fitness exercises using computer vision & machine learning. [Live Demo](https://joe9154.github.io/Mobile-Fitness-App/)
 
 ![Demo_gif](/readme_resources/demo.gif)
 
