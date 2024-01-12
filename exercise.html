@@ -202,7 +202,7 @@
 
         async function loadModel() {
             const modelName = `${exercise.toLowerCase()}-nn-model.json`;
-            model = await tf.loadLayersModel(`/exerciseModels/${modelName}`)
+            model = await tf.loadLayersModel(`./exerciseModels/${modelName}`)
             print("Model loaded")
         }
 
